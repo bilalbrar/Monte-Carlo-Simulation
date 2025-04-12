@@ -208,73 +208,98 @@ class Factory:
         
         return 0  # Not utilizing any gap
     
-    def _schedule_cutting_stage(self, order: Order) -> Tuple[int, Machine, int]:
-        """Schedule the cutting stage for an order with proper setup time handling."""
-        best_start = float('inf')
-        best_machine = None
-        best_setup_time = 0
-
-        # First try machines already set up for this product type
-        for machine in self.cutting_machines:
-            if machine.last_product_type == order.product_type:
-                _, next_time = machine.is_available(0, order.cut_time)
-                if next_time < best_start:
-                    best_start = next_time
-                    best_machine = machine
-                    best_setup_time = 0
+    def _get_next_unscheduled_orders(self, count: int, current_order: Order, sequence: List[str] = None) -> List[Order]:
+        """
+        Get the next few unscheduled orders in the sequence.
+        Used for look-ahead optimization.
+        """
+        if sequence is None:
+            # If no sequence provided, just get any unscheduled orders
+            unscheduled = [order for order in self.orders.values() 
+                          if not order.is_scheduled() and order.order_id != current_order.order_id]
+            return unscheduled[:count]
         
-        # If no matching machine found, try all machines
-        if best_machine is None:
-            for machine in self.cutting_machines:
-                setup_time = machine.get_setup_time(order.product_type)
-                _, next_time = machine.is_available(0, order.cut_time + setup_time)
-                if next_time < best_start:
-                    best_start = next_time
-                    best_machine = machine
-                    best_setup_time = setup_time
-
+        # Get orders that come after current_order in the sequence
+        try:
+            current_idx = sequence.index(current_order.order_id)
+            next_ids = sequence[current_idx+1:current_idx+count+1]
+            return [self.orders[oid] for oid in next_ids if oid in self.orders]
+        except ValueError:
+            # If current_order not in sequence, return first few orders
+            return [self.orders[oid] for oid in sequence[:count] if oid in self.orders]
+    
+    def _schedule_cutting_stage(self, order: Order, sequence: List[str] = None) -> Tuple[int, Machine, int]:
+        """Enhanced cutting scheduling with look-ahead to reduce setup times."""
+        best_machine = None
+        best_start_time = float('inf')
+        best_setup_time = 0
+        
+        for machine in self.cutting_machines:
+            setup_time = machine.get_setup_time(order.product_type)
+            is_available, next_time = machine.is_available(0, order.cut_time + setup_time)
+            earliest_time = next_time
+            
+            # Look ahead at the next few orders to consider setup impacts
+            future_impact = 0
+            next_orders = self._get_next_unscheduled_orders(3, current_order=order, sequence=sequence)
+            
+            for next_order in next_orders:
+                if next_order.product_type != order.product_type:
+                    future_impact += 10  # Potential future setup penalty
+            
+            # Factor in future setup impacts (weighted)
+            adjusted_start = earliest_time + (future_impact * 0.1)
+            
+            if adjusted_start < best_start_time:
+                best_machine = machine
+                best_start_time = earliest_time  # Use actual time, not adjusted time
+                best_setup_time = setup_time
+        
         if best_machine is None:
             raise ValueError(f"No cutting machine available for order {order.order_id}")
-
-        return best_start, best_machine, best_setup_time
+        
+        return best_start_time, best_machine, best_setup_time
 
     def _schedule_sewing_stage(self, order: Order, earliest_start: int) -> Tuple[int, Machine]:
-        """
-        Schedule the sewing stage for an order, ensuring it starts as soon as cutting is finished
-        (or after the post-cutting delay if applicable).
-        """
-        best_start = float('inf')
+        """Enhanced sewing scheduling that prioritizes bottleneck optimization."""
         best_machine = None
-
+        best_start_time = float('inf')
+        actual_start = 0
+        
+        # Calculate a "value" metric: higher priority for orders with shorter sew time
+        value_metric = 1 / (order.sew_time + 1)  # Add 1 to avoid division by zero
+        
         for machine in self.sewing_machines:
-            # Ensure sewing starts no earlier than the earliest_start
-            _, next_time = machine.is_available(earliest_start, order.sew_time)
-            adjusted_start = max(next_time, earliest_start)
-
-            # Prioritize the earliest adjusted start time
-            if adjusted_start < best_start:
-                best_start = adjusted_start
+            is_available, next_time = machine.is_available(earliest_start, order.sew_time)
+            start_time = next_time
+            
+            # Factor in the value metric (weighted by 0.2 to balance with start time)
+            adjusted_start = start_time - (value_metric * 0.2 * order.sew_time)
+            
+            if adjusted_start < best_start_time:
+                best_start_time = adjusted_start
                 best_machine = machine
-
+                actual_start = start_time  # Keep track of actual start time
+        
         if best_machine is None:
             raise ValueError(f"No sewing machine available for order {order.order_id}")
-
-        return best_start, best_machine
-
+        
+        return actual_start, best_machine
+    
     def _schedule_packing_stage(self, order: Order, earliest_start: int) -> Tuple[int, Machine]:
         """Schedule the packing stage for an order."""
         machine = self.packing_machines[0]
         _, next_time = machine.is_available(earliest_start, order.pack_time)
         return next_time, machine
     
-    def schedule_order(self, order: Order) -> None:
-        """Schedule an order through all production stages."""
+    def schedule_order(self, order: Order, sequence: List[str] = None) -> None:
+        """Schedule an order through all production stages with optimization."""
         try:
-            # Step 1: Schedule cutting stage
-            cut_start, cut_machine, setup_time = self._schedule_cutting_stage(order)
+            # Step 1: Schedule cutting stage with look-ahead optimization
+            cut_start, cut_machine, setup_time = self._schedule_cutting_stage(order, sequence)
             
             # Calculate actual cutting start time after setup
-            actual_cut_start = cut_start + setup_time  # Add setup time if needed
+            actual_cut_start = cut_start + setup_time
             actual_cut_end = actual_cut_start + order.cut_time
             
             # Update order with cutting information
@@ -285,7 +310,7 @@ class Factory:
             # Add task to cutting machine
             cut_machine.add_task(cut_start, actual_cut_end, order.order_id, order.product_type)
 
-            # Step 2: Schedule sewing stage
+            # Step 2: Schedule sewing stage with bottleneck optimization
             earliest_sew_start = order.cut_end_time
             if order.requires_delay:
                 earliest_sew_start += self.post_cutting_delay
@@ -313,9 +338,9 @@ class Factory:
         except Exception as e:
             self._reset_order_schedule(order)
             raise ValueError(f"Failed to schedule order {order.order_id}: {str(e)}")
-
+    
     def schedule_all_orders(self, order_sequence: List[str]) -> None:
-        """Schedule all orders in the specified sequence."""
+        """Schedule all orders in the specified sequence with optimizations."""
         # Reset all machine schedules
         for machine in self.all_machines:
             machine.schedule = []
@@ -326,7 +351,7 @@ class Factory:
         for order_id in order_sequence:
             if order_id in self.orders:
                 try:
-                    self.schedule_order(self.orders[order_id])
+                    self.schedule_order(self.orders[order_id], sequence=order_sequence)
                 except ValueError as e:
                     print(f"Warning: Could not schedule order {order_id}: {str(e)}")
 
@@ -400,6 +425,26 @@ class Scheduler:
         self.best_schedule = None
         self.best_metrics = None
     
+    def get_two_phase_order_sequence(self):
+        """
+        Two-phase strategy: Process non-delay orders first, then delay orders.
+        Within each group, sort by deadline.
+        """
+        order_ids = list(self.factory.orders.keys())
+        
+        # First process orders without delays
+        non_delay_orders = [oid for oid in order_ids 
+                            if not self.factory.orders[oid].requires_delay]
+        non_delay_orders.sort(key=lambda x: self.factory.orders[x].deadline)
+        
+        # Then process orders with delays
+        delay_orders = [oid for oid in order_ids 
+                       if self.factory.orders[oid].requires_delay]
+        delay_orders.sort(key=lambda x: self.factory.orders[x].deadline)
+        
+        # Combine the sequences
+        return non_delay_orders + delay_orders
+    
     def run_monte_carlo_simulation(self, num_simulations: int = 100) -> Dict:
         """
         Run Monte Carlo simulations with various heuristics to find the best schedule.
@@ -410,30 +455,62 @@ class Scheduler:
         valid_schedule_found = False  # Track if a valid schedule is found
         
         for i in range(num_simulations):
-            # Replace the random strategy section with these approaches
-            if i % 4 == 0:
+            # Enhanced scheduling strategies with 8 different approaches
+            if i % 8 == 0:
                 # Product type batching with deadline sub-sorting
                 sequence = sorted(order_ids, 
                                   key=lambda x: (self.factory.orders[x].product_type, 
                                                  self.factory.orders[x].deadline))
-            elif i % 4 == 1:
+                strategy_name = "product type batching"
+                
+            elif i % 8 == 1:
                 # Out-of-factory priority with deadline sorting
                 sequence = sorted(order_ids, 
                                   key=lambda x: (not self.factory.orders[x].requires_delay,
                                                  self.factory.orders[x].deadline))
-            elif i % 4 == 2:
+                strategy_name = "non-delay priority"
+                
+            elif i % 8 == 2:
                 # Modified critical ratio with out-of-factory consideration
                 sequence = sorted(order_ids, 
                                   key=lambda x: (self.factory.orders[x].deadline / 
                                                  (self.factory.orders[x].total_processing_time * 
                                                   (1.5 if self.factory.orders[x].requires_delay else 1))))
-            elif i % 4 == 3:
+                strategy_name = "critical ratio"
+                
+            elif i % 8 == 3:
                 # Balanced operation load
                 sequence = sorted(order_ids, 
                                   key=lambda x: max(self.factory.orders[x].cut_time,
                                                     self.factory.orders[x].sew_time,
                                                     self.factory.orders[x].pack_time) / 
                                                 self.factory.orders[x].total_processing_time)
+                strategy_name = "balanced workload"
+                
+            elif i % 8 == 4:
+                # Shortest Processing Time (SPT)
+                sequence = sorted(order_ids, 
+                                 key=lambda x: self.factory.orders[x].total_processing_time)
+                strategy_name = "shortest processing time"
+                
+            elif i % 8 == 5:
+                # Two-phase: Non-delay first, then delay orders
+                sequence = self.get_two_phase_order_sequence()
+                strategy_name = "two-phase strategy"
+                
+            elif i % 8 == 6:
+                # Sort by bottleneck (sewing time)
+                sequence = sorted(order_ids, 
+                                 key=lambda x: self.factory.orders[x].sew_time)
+                strategy_name = "bottleneck focus"
+                
+            elif i % 8 == 7:
+                # Hybrid strategy: type batching with non-delay priority
+                sequence = sorted(order_ids, 
+                                 key=lambda x: (self.factory.orders[x].product_type,
+                                               self.factory.orders[x].requires_delay,
+                                               self.factory.orders[x].deadline))
+                strategy_name = "hybrid batching"
             
             try:
                 self.factory.schedule_all_orders(sequence)
@@ -443,9 +520,10 @@ class Scheduler:
                 if self.best_metrics is None or metrics["avg_lateness"] < self.best_metrics["avg_lateness"]:
                     self.best_metrics = metrics
                     self.best_schedule = sequence.copy()
-                    print(f"New best schedule found with avg lateness: {metrics['avg_lateness']:.2f} (strategy: {i%4})")
+                    print(f"New best schedule found with avg lateness: {metrics['avg_lateness']:.2f} (strategy: {strategy_name})")
+                    print(f"  On-time orders: {metrics['on_time_orders']}/{metrics['total_orders']} ({metrics['on_time_orders']/metrics['total_orders']*100:.1f}%)")
             except Exception as e:
-                print(f"Failed to schedule with sequence {i}: {str(e)}")
+                print(f"Failed to schedule with sequence {i} ({strategy_name}): {str(e)}")
                 continue
             
             if (i+1) % 10 == 0:
