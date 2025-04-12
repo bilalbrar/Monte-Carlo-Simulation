@@ -3,8 +3,8 @@ import sys
 import os
 
 # Add the project root directory to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from task.apparel_scheduler import Order, Machine, Factory
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from apparel_scheduler import Order, Machine, Factory
 
 def test_order_class():
     """Test the Order class functionality."""

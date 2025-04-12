@@ -13,7 +13,7 @@ import sys
 
 # Add the project root directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from task.test.unit_tests import test_order_class, test_machine_class, test_factory_simple_schedule, test_factory_with_delay
+from test.unit_tests import test_order_class, test_machine_class, test_factory_simple_schedule, test_factory_with_delay
 
 def run_tests():
     """Run all test cases."""
