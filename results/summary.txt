@@ -1,50 +1,41 @@
 Total orders: 50
-Orders completed on time: 10 (20.0%)
-Average lateness: 92.64 time units
-Maximum lateness: 300 time units
-Total lateness: 4632 time units
+Orders completed on time: 19 (38.0%)
+Average lateness: 100.78 time units
+Maximum lateness: 310 time units
+Total lateness: 5039 time units
 
 Lateness by Order (only late orders):
-O007: 300 time units late
-O046: 280 time units late
-O017: 276 time units late
-O040: 263 time units late
-O003: 256 time units late
-O032: 222 time units late
-O039: 212 time units late
-O004: 211 time units late
-O023: 211 time units late
-O045: 192 time units late
-O038: 183 time units late
-O026: 172 time units late
-O014: 167 time units late
-O009: 162 time units late
-O012: 160 time units late
-O028: 160 time units late
-O042: 143 time units late
-O044: 136 time units late
-O020: 135 time units late
-O021: 120 time units late
-O041: 111 time units late
-O043: 86 time units late
-O027: 51 time units late
-O002: 44 time units late
-O019: 42 time units late
-O006: 40 time units late
-O016: 40 time units late
-O011: 37 time units late
-O015: 34 time units late
-O030: 33 time units late
-O025: 31 time units late
-O037: 30 time units late
-O035: 22 time units late
-O034: 20 time units late
-O036: 17 time units late
-O029: 11 time units late
-O010: 10 time units late
-O013: 9 time units late
-O047: 2 time units late
-O033: 1 time units late
+O019: 310 time units late
+O034: 301 time units late
+O015: 297 time units late
+O007: 294 time units late
+O017: 286 time units late
+O030: 235 time units late
+O025: 211 time units late
+O004: 198 time units late
+O036: 198 time units late
+O029: 196 time units late
+O038: 191 time units late
+O045: 191 time units late
+O018: 174 time units late
+O046: 155 time units late
+O027: 154 time units late
+O047: 154 time units late
+O048: 149 time units late
+O003: 143 time units late
+O028: 136 time units late
+O001: 131 time units late
+O033: 113 time units late
+O010: 111 time units late
+O035: 109 time units late
+O049: 106 time units late
+O039: 105 time units late
+O024: 101 time units late
+O050: 97 time units late
+O013: 87 time units late
+O022: 61 time units late
+O009: 44 time units late
+O037: 1 time units late
 
 Lateness Analysis by Product Type:
 
@@ -52,6 +43,6 @@ Product Type Analysis:
              lateness           
                  mean  max count
 product_type                    
-A              105.11  263    19
-B               93.75  280    12
-C               79.47  300    19
+A                0.05    1    19
+B              106.33  155    12
+C              198.00  310    19
