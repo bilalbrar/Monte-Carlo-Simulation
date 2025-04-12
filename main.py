@@ -134,15 +134,20 @@ def main():
     print("\nSaving results...")
     save_results(scheduler, output_dir)
     
-    # Create visualizations
-    print("Generating visualizations...")
-    scheduler.visualize_schedule(
+    # Create visualisations
+    print("Generating visualisations...")
+    scheduler.visualise_schedule(
         save_gantt=f"{output_dir}/schedule_gantt.png",
         save_lateness=f"{output_dir}/schedule_lateness.png"
     )
-    # Add machine utilization visualization
-    scheduler.create_machine_utilization_chart(
-        save_path=f"{output_dir}/machine_utilization.png"
+    # Add machine utilisation visualisation
+    scheduler.create_machine_utilisation_chart(
+        save_path=f"{output_dir}/machine_utilisation.png"
+    )
+    
+    # Add machine utilisation visualisation
+    scheduler.create_machine_utilisation_chart(
+        save_path=f"{output_dir}/machine_utilisation.png"
     )
     
     # End timer

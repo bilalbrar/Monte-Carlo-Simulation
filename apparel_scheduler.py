@@ -782,7 +782,7 @@ class Scheduler:
         plt.tight_layout()
         return fig, ax
     
-    def create_machine_utilization_chart(self, save_path=None):
+    def create_machine_utilisation_chart(self, save_path=None):
         """Create a chart showing machine utilisation percentages."""
         if not self.best_schedule:
             raise ValueError("No simulations have been run yet")
