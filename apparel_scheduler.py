@@ -5,7 +5,7 @@ This module implements a forward planning scheduler for a simplified apparel pro
 process with three sequential stages: Cut → Sew → Pack.
 
 The system uses Monte Carlo simulation with intelligent heuristics to find an optimal schedule 
-that minimizes order lateness.
+that minimises order lateness.
 """
 
 import pandas as pd
@@ -48,7 +48,7 @@ class Order:
         self.completion_time = None
         self.lateness = None
         
-        # Calculate total processing time for prioritization
+        # Calculate total processing time for prioritisation
         self.total_processing_time = cut_time + sew_time + pack_time
     
     def is_scheduled(self) -> bool:
@@ -151,7 +151,7 @@ class Machine:
 class Factory:
 
     def __init__(self):
-        # Initialize machines (tasks cannot be split across machines)
+        # Initialise machines (tasks cannot be split across machines)
         self.cutting_machines = [Machine(f"Cut_{i+1}", "cut") for i in range(2)]  # 2 cutting tables
         self.sewing_machines = [Machine(f"Sew_{i+1}", "sew") for i in range(3)]  # 3 sewing stations
         self.packing_machines = [Machine(f"Pack_{i+1}", "pack") for i in range(1)]  # 1 packing station
@@ -168,13 +168,13 @@ class Factory:
         """Add an order to the factory."""
         self.orders[order.order_id] = order
 
-    def _calculate_gap_utilization(self, machine: Machine, start_time: int, duration: int) -> float:
+    def _calculate_gap_utilisation(self, machine: Machine, start_time: int, duration: int) -> float:
         """
-        Calculate how well a task utilizes existing gaps in the machine schedule.
-        Returns a score from 0 to 1, where 1 means perfect utilization.
+        Calculate how well a task utilises existing gaps in the machine schedule.
+        Returns a score from 0 to 1, where 1 means perfect utilisation.
         """
         if not machine.schedule:
-            return 0  # No gaps to utilize in an empty schedule
+            return 0  # No gaps to utilise in an empty schedule
         
         end_time = start_time + duration
         
@@ -206,12 +206,12 @@ class Factory:
         if start_time >= sorted_schedule[-1][1]:
             return 0.5  # Medium priority for appending at the end
         
-        return 0  # Not utilizing any gap
+        return 0  # Not utilising any gap
     
     def _get_next_unscheduled_orders(self, count: int, current_order: Order, sequence: List[str] = None) -> List[Order]:
         """
         Get the next few unscheduled orders in the sequence.
-        Used for look-ahead optimization.
+        Used for look-ahead optimisation.
         """
         if sequence is None:
             # If no sequence provided, just get any unscheduled orders
@@ -261,7 +261,7 @@ class Factory:
         return best_start_time, best_machine, best_setup_time
 
     def _schedule_sewing_stage(self, order: Order, earliest_start: int) -> Tuple[int, Machine]:
-        """Enhanced sewing scheduling that prioritizes bottleneck optimization."""
+        """Enhanced sewing scheduling that prioritises bottleneck optimisation."""
         best_machine = None
         best_start_time = float('inf')
         actual_start = 0
@@ -293,9 +293,9 @@ class Factory:
         return next_time, machine
     
     def schedule_order(self, order: Order, sequence: List[str] = None) -> None:
-        """Schedule an order through all production stages with optimization."""
+        """Schedule an order through all production stages with optimisation."""
         try:
-            # Step 1: Schedule cutting stage with look-ahead optimization
+            # Step 1: Schedule cutting stage with look-ahead optimisation
             cut_start, cut_machine, setup_time = self._schedule_cutting_stage(order, sequence)
             
             # Calculate actual cutting start time after setup
@@ -310,7 +310,7 @@ class Factory:
             # Add task to cutting machine
             cut_machine.add_task(cut_start, actual_cut_end, order.order_id, order.product_type)
 
-            # Step 2: Schedule sewing stage with bottleneck optimization
+            # Step 2: Schedule sewing stage with bottleneck optimisation
             earliest_sew_start = order.cut_end_time
             if order.requires_delay:
                 earliest_sew_start += self.post_cutting_delay
@@ -340,7 +340,7 @@ class Factory:
             raise ValueError(f"Failed to schedule order {order.order_id}: {str(e)}")
     
     def schedule_all_orders(self, order_sequence: List[str]) -> None:
-        """Schedule all orders in the specified sequence with optimizations."""
+        """Schedule all orders in the specified sequence with optimisations."""
         # Reset all machine schedules
         for machine in self.all_machines:
             machine.schedule = []
@@ -402,7 +402,7 @@ class Factory:
 
 class Scheduler:
     """
-    Main scheduler class that handles Monte Carlo simulations and optimization.
+    Main scheduler class that handles Monte Carlo simulations and optimisation.
     """
     def __init__(self, orders_data: pd.DataFrame):
         self.orders_data = orders_data
@@ -574,9 +574,9 @@ class Scheduler:
             "order_details": order_details
         }
     
-    def visualize_schedule(self, save_gantt=None, save_lateness=None):
+    def visualise_schedule(self, save_gantt=None, save_lateness=None):
         """
-        Generate and display visualizations for the schedule.
+        Generate and display visualisations for the schedule.
         """
         if self.best_schedule is None:
             raise ValueError("No simulations have been run yet")
@@ -597,8 +597,8 @@ class Scheduler:
         detailed = self.get_detailed_schedule()
         order_details = detailed['order_details']
         
-        # Define colors for different stages
-        colors = {
+        # Define colours for different stages
+        colours = {
             'cut': 'lightblue',
             'sew': 'lightgreen',
             'pack': 'salmon'
@@ -687,7 +687,7 @@ class Scheduler:
                     machine_idx, 
                     task['end'] - task['start'], 
                     left=task['start'], 
-                    color=colors[task['type']],
+                    color=colours[task['type']],
                     edgecolor='black',
                     alpha=0.8
                 )
@@ -713,9 +713,9 @@ class Scheduler:
         
         # Add legend
         legend_handles = [
-            plt.Rectangle((0, 0), 1, 1, color=colors['cut']),
-            plt.Rectangle((0, 0), 1, 1, color=colors['sew']),
-            plt.Rectangle((0, 0), 1, 1, color=colors['pack'])
+            plt.Rectangle((0, 0), 1, 1, color=colours['cut']),
+            plt.Rectangle((0, 0), 1, 1, color=colours['sew']),
+            plt.Rectangle((0, 0), 1, 1, color=colours['pack'])
         ]
         ax.legend(legend_handles, ['Cutting', 'Sewing', 'Packing'], loc='upper right')
         
@@ -783,7 +783,7 @@ class Scheduler:
         return fig, ax
     
     def create_machine_utilization_chart(self, save_path=None):
-        """Create a chart showing machine utilization percentages."""
+        """Create a chart showing machine utilisation percentages."""
         if not self.best_schedule:
             raise ValueError("No simulations have been run yet")
 
@@ -794,10 +794,10 @@ class Scheduler:
         # Calculate total schedule time
         total_time = max(order['completion_time'] for order in order_details)
         
-        # Calculate utilization for each machine
+        # Calculate utilisation for each machine
         machine_usage = {}
         
-        # Initialize all machines with zero utilization
+        # Initialise all machines with zero utilisation
         for machine_id in ['Cut_1', 'Cut_2', 'Sew_1', 'Sew_2', 'Sew_3', 'Pack_1']:
             machine_type = 'Cutting' if 'Cut' in machine_id else 'Sewing' if 'Sew' in machine_id else 'Packing'
             machine_usage[machine_id] = {'busy_time': 0, 'type': machine_type}
@@ -823,30 +823,30 @@ class Scheduler:
             'Pack_1'                     # 1 packing machine
         ]
 
-        # Calculate utilization percentages
+        # Calculate utilisation percentages
         for machine in machine_usage.values():
-            machine['utilization'] = (machine['busy_time'] / total_time) * 100 if total_time > 0 else 0
+            machine['utilisation'] = (machine['busy_time'] / total_time) * 100 if total_time > 0 else 0
         
         # Sort machines according to defined order
         machines = machine_order  # Use all machines in order
-        utilization = [machine_usage[m]['utilization'] for m in machines]
-        colors = ['lightblue' if machine_usage[m]['type'] == 'Cutting'
+        utilisation = [machine_usage[m]['utilisation'] for m in machines]
+        colours = ['lightblue' if machine_usage[m]['type'] == 'Cutting'
                  else 'lightgreen' if machine_usage[m]['type'] == 'Sewing'
                  else 'salmon' for m in machines]
         
-        # Print utilization stats
-        print(f"Machine utilization analysis:")
+        # Print utilisation stats
+        print(f"Machine utilisation analysis:")
         print(f"  Total schedule time: {total_time}")
-        print(f"  Average machine utilization: {np.mean(utilization):.2f}%")
-        print(f"  Cutting machines avg: {np.mean([u for i, u in enumerate(utilization) if 'Cut' in machines[i]]):.2f}%")
-        print(f"  Sewing machines avg: {np.mean([u for i, u in enumerate(utilization) if 'Sew' in machines[i]]):.2f}%")
-        print(f"  Packing machines avg: {np.mean([u for i, u in enumerate(utilization) if 'Pack' in machines[i]]):.2f}%")
+        print(f"  Average machine utilisation: {np.mean(utilisation):.2f}%")
+        print(f"  Cutting machines avg: {np.mean([u for i, u in enumerate(utilisation) if 'Cut' in machines[i]]):.2f}%")
+        print(f"  Sewing machines avg: {np.mean([u for i, u in enumerate(utilisation) if 'Sew' in machines[i]]):.2f}%")
+        print(f"  Packing machines avg: {np.mean([u for i, u in enumerate(utilisation) if 'Pack' in machines[i]]):.2f}%")
 
-        # Create the visualization
+        # Create the visualisation
         fig, ax = plt.subplots(figsize=(12, 6))
         
         # Create bars
-        bars = ax.bar(machines, utilization, color=colors)
+        bars = ax.bar(machines, utilisation, color=colours)
         
         # Add percentage labels on top of bars
         for bar in bars:
@@ -854,13 +854,13 @@ class Scheduler:
             ax.text(bar.get_x() + bar.get_width()/2., height,
                    f'{height:.1f}%', ha='center', va='bottom')
         
-        # Customize chart
-        ax.set_ylabel('Utilization (%)')
-        ax.set_title('Machine Utilization Rates')
+        # Customise chart
+        ax.set_ylabel('Utilisation (%)')
+        ax.set_title('Machine Utilisation Rates')
         ax.grid(axis='y', linestyle='--', alpha=0.7)
         
-        # Set y-axis limit to show better perspective on utilization
-        ax.set_ylim(0, max(100, max(utilization) * 1.1))
+        # Set y-axis limit to show better perspective on utilisation
+        ax.set_ylim(0, max(100, max(utilisation) * 1.1))
         
         # Add legend
         legend_elements = [plt.Rectangle((0,0),1,1, facecolor=c, label=l) 
